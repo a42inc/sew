@@ -1,2 +1,2 @@
 # sew
-The Simplest Ethereum Wallet
+The simplest ether wallet.
