@@ -1,29 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>The simplest ether wallet</title>
-<script src="./libs/ethereumjs-wallet-0.6.0.min.js"></script>
-<script src="./libs/web3.min.js"></script>
-<script src="./main.js"></script>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>simple ethereum wallet</title>
+  <script src='./libs/ethers-v4.min.js'></script>
+  <script src='./main.js'></script>
+  <style>
+    body, input, select, button {
+      font-family: "Osaka-mono", "Courier New", monospace;
+      font-size: 1em;
+    }
+  </style>
 </head>
 <body>
-  <p>The simplest ether wallet.</p>
+  <h1>simple ethereum wallet</h1>
 
-  <h2>Wallet info</h2>
-  <p><button onclick="generateWallet()">Generate wallet</button></p>
-  <p>Private key: <input type="password" id="privatekey" size="60"> <button onclick="loadWallet()">Load wallet</button> <button onclick="togglePrivateKeyDisplay()">Show private key</button></p>
-  <p>Wallet address: <input type="text" id="address" size="60" readonly=""></p>
-  <p>Balance: <input type="number" id="balance" style="text-align: right;" readonly=""> ETH</p>
+  <hr />
+  <h2>generate new wallet</h2>
+  <p><button onclick='generateWallet()'>generate</button></p>
+  
+  <hr />
+  <h2>load wallet</h2>
+  <p>mnemonic: <input type='text' id='load-mnemonic' size='60' /><button onclick='loadWallet()'>load</button></p>
 
-  <h2>Send ether</h2>
-  <p>To address: <input type="text" id="to-address" size="60"></p>
-  <p>Amount: <input type="number" id="to-amount" min="0" step="0.001" style="text-align: right;"> ETH</p>
-  <p>Gas Price: <input type="number" id="gas-price" min="1" value="42" step="1" style="text-align: right;"> Gwei</p>
-  <p><button onclick="sendEther()">Send Ether</button></p>
-  <span id="tx-result"></span>
+  <hr />
+  <h2>netrwork</h2>
+  <select name='network' onchange='onNetworkUpdate()'>
+    <option value="homestead" selected>homestead (mainnet)</option>
+    <option value="ropsten">ropsten (testnet)</option>
+  </select>
 
-  <p>Source code: <a href="https://github.com/a42inc/sew/" target="_blank">https://github.com/a42inc/sew/</a></p>
+  <hr />
+  <h2>wallet info</h2>
+  <p>address: <input type='text' id='address' size='50' readonly='' /></p>  
+  <p>mnemonic: <input type='password' id='mnemonic' size='80'><button onclick='toggleDisplay("mnemonic")'>show</button></p>
+  <p>ETH balance: <input type='number' id='balance' size='10' style='text-align: right;' readonly='' /><button onclick='loadBalance()'>load</button></p>
+
+  <hr />
+  <h2>send ether</h2>
+  <p>to address: <input type='text' id='to-address' size='50' /></p>
+  <p>send ETH amount: <input type='number' id='to-amount' min='0' step='0.001' value="0" size='10' style='text-align: right;'></p>
+  <p>gas price: <input type='number' id='gas-price' min='1' step="1" value='10' step='1' size='10' style='text-align: right;' /> Gwei</p>
+  <p><button onclick='sendEther()'>Send Ether</button></p>
+
+  <hr />
+  <h2>transactions</h2>
+  <ul id='tx-result'>
+  </ul>
+
+  <hr />
+  <p>Source code: <a href='https://github.com/a42inc/sew/' target='_blank'>https://github.com/a42inc/sew/</a></p>
 
 </body>
 </html>
