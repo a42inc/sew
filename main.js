@@ -1,149 +1,151 @@
-const CHAIN_ID = 1
-const GAS_LIMIT = 21000
-const LOCALSTORAGE_KEY_PRIIVATEKEY = "SEW_PRIVATEKEY"
-const EthWallet = ethereumjs.Wallet
-const EthUtil = ethereumjs.Util
-const EthTx = ethereumjs.Tx
+const STORAGE_KEY = "SEW_MNEMONIC"
+window.network = 'homestead'
+window.provider = ethers.getDefaultProvider(window.network)
 
-function getEthBalance(address) {
-	window.web3js.eth.getBalance(address, (error, balance) => {
-		if (error) {
-			alert(error)
-		} else {
-			let ethBalance = window.web3js.fromWei(balance, 'ether')
-			document.getElementById('balance').value = ethBalance
-		}
-  })
+function loadBalance() {
+	console.log("load ETH balance")
+	window.provider.getBalance(window.wallet.address)
+	.then((balance) => {
+		let balanceInEth = ethers.utils.formatEther(balance)
+		document.getElementById('balance').value = balanceInEth
+	})
 }
 
 function showWalletInfo(wallet) {
-	let address = wallet.getChecksumAddressString()
-	let privateKey = wallet.getPrivateKeyString()
-	document.getElementById('address').value = address
-	document.getElementById('privatekey').value = privateKey
-	getEthBalance(address)
+	console.log("show wallet info")
+	document.getElementById('address').value = wallet.address
+	document.getElementById('mnemonic').value = wallet.mnemonic
+	loadBalance()
 }
 
-// Save wallet onto local storage
+function generateWallet() {
+	console.log("generate wallet")
+	window.wallet = new ethers.Wallet.createRandom()
+	saveWallet(wallet)
+	onWalletUpdate(window.wallet)
+}
+
 function saveWallet(wallet) {
-  const privateKeyString = wallet.getPrivateKeyString()
-  localStorage.setItem(LOCALSTORAGE_KEY_PRIIVATEKEY, privateKeyString)
+	console.log("save wallet onto local storage")
+  const mnemonic = wallet.mnemonic
+  localStorage.setItem(STORAGE_KEY, mnemonic)
 }
 
-// Recover wallet from local storage
 function recoverWallet() {
-  const privateKeyString = localStorage.getItem(LOCALSTORAGE_KEY_PRIIVATEKEY)
-  if(privateKeyString) {
-  	const privateKeyBuffer = EthUtil.toBuffer(privateKeyString)
-  	window.wallet = EthWallet.fromPrivateKey(privateKeyBuffer)
-  	showWalletInfo(window.wallet)
+	console.log("recover wallet from local storage")
+  const mnemonic = localStorage.getItem(STORAGE_KEY)
+  if(mnemonic) {
+  	try {
+	  	window.wallet = ethers.Wallet.fromMnemonic(mnemonic)
+  		onWalletUpdate(window.wallet)
+	  } catch (e) {
+	  	console.log("wallet recover failed")
+			console.log(e)
+			alert(e.message)
+	  }
+  } else {
+  	console.log("no wallet found")
   }
 }
 
-// Generate wallet
-function generateWallet() {
-	window.wallet = EthWallet.generate()
-	saveWallet(window.wallet)
-	showWalletInfo(window.wallet)
-}
-
-// Load wallet from private key
 function loadWallet() {
-	let privateKey = document.getElementById('privatekey').value
-	let privateKeyBuffer = EthUtil.toBuffer(privateKey)
-	window.wallet = EthWallet.fromPrivateKey(privateKeyBuffer)
-	saveWallet(window.wallet)
-	showWalletInfo(window.wallet)
-}
-
-function showTxResult(txHash) {
-	let elm = document.getElementById('tx-result')
-	elm.textContent = null	// remove child elements
-	let link = '<a href="https://etherscan.io/tx/' + txHash + '" target="_blank">tx result</a>'
-	elm.innerHTML = link
-}
-
-function getNonce(address, callback) {
-	window.web3js.eth.getTransactionCount(address, function(error, result){
-		if (error) {
-			alert(error)
-		} else {
-			callback(result)
+	console.log("load wallet from mnemonic")
+	let mnemonic = document.getElementById('load-mnemonic').value
+	if(mnemonic) {
+		try {
+			window.wallet = ethers.Wallet.fromMnemonic(mnemonic)
+			saveWallet(wallet)
+			onWalletUpdate(window.wallet)
+		} catch (e) {
+			console.log("wallet load failed")
+			console.log(e)
+			alert(e.message)
 		}
-	})
+  } else {
+  	console.log("no mnemonic found")
+  	alert("no mnemonic found")
+  }
 }
 
-function sendRawTx(rawTx, callback) {
-	window.web3js.eth.sendRawTransaction(rawTx, function(error, result){
-		if (error) {
-			alert(error)
-		} else {
-			callback(result)
-		}
-	})
-}
-
-function createTx(nonce, to, gasPrice, gasLimit, value) {
-	const txParams = {
-		nonce: window.web3js.toHex(nonce),
-		to: to,
-		gasPrice: window.web3js.toHex(gasPrice),
-		gasLimit: window.web3js.toHex(gasLimit),
-		value: window.web3js.toHex(value),
-		chainId: CHAIN_ID
+function showTxResult(txHash, network) {	
+	let endpoint
+	if (network == "homestead") {
+		endpoint = "etherscan.io"
+	} else {
+		endpoint = `${network}.etherscan.io`
 	}
-	const tx = new EthTx(txParams)
-	return tx
+	let url = `https://${endpoint}/tx/${txHash}`
+	
+	let a = document.createElement('a')
+	a.innerHTML = url
+	a.href = url
+	a.target = "_blank"
+	
+	let li = document.createElement('li')
+	li.appendChild(a)
+
+	let ul = document.getElementById('tx-result')
+	ul.insertBefore(li, ul.childNodes[0])
 }
 
 function sendEther() {
-	const fromAddress = window.wallet.getAddressString()
 	const toAddress = document.getElementById('to-address').value
-
-	if(!EthUtil.isValidAddress(toAddress)) {
-		alert("Enter a valid to-address.")
-		return
-	}
-
-	const ethAmount = document.getElementById('to-amount').value
-	const weiAmount = window.web3js.toWei(ethAmount, 'ether')
-
-	if(weiAmount <= 0) {
-		alert("Enter valid amount.")
-		return
-	}
-
 	const gasPrice = document.getElementById('gas-price').value
-	const weiGasPrice = window.web3js.toWei(gasPrice, 'gwei')
+	const weiGasPrice = ethers.utils.parseUnits(gasPrice, 'Gwei')
+	const ethAmount = document.getElementById('to-amount').value
+	const weiAmount = ethers.utils.parseEther(ethAmount)
 
-	getNonce(fromAddress, function(nonce) {
-		const tx = createTx(nonce, toAddress, weiGasPrice, GAS_LIMIT, weiAmount)
-		tx.sign(EthUtil.toBuffer(window.wallet.getPrivateKeyString()))
-		const serializedTx = tx.serialize()
-		const rawTx = '0x' + serializedTx.toString('hex')
-		sendRawTx(rawTx, function(result) {
-			alert("Tx has been sent.")
-			showTxResult(result)
-		})
+	if (!toAddress) { 
+		console.log("no address found")
+		return
+	}
+
+	const tx = {
+		to: toAddress,
+		gasPrice: ethers.utils.bigNumberify(weiGasPrice),
+		value: weiAmount
+	}
+
+	window.wallet
+	.connect(window.provider)
+	.sendTransaction(tx)
+	.then((txObj) => {
+		console.log(txObj)
+		document.getElementById('to-address').value = ""
+		document.getElementById('to-amount').value = "0"
+		showTxResult(txObj.hash, window.network)
+	})
+	.catch((e) => {
+		console.log(e)
+		alert(e.message)
 	})
 }
 
-function togglePrivateKeyDisplay() {
-	let elm = document.getElementById('privatekey')
-	let type = elm.getAttribute('type')
-	if (type == "password") {
-		event.target.innerText = "Hide private key"
-		elm.setAttribute('type', 'text')
+function toggleDisplay(key) {
+	let elment = document.getElementById(key)
+	let type = elment.getAttribute('type')
+	if (type == 'password') {
+		event.target.innerText = "hide"
+		elment.setAttribute('type', 'text')
 	} else {
-		event.target.innerText = "Show private key"
-		elm.setAttribute('type', 'password')
+		event.target.innerText = "show"
+		elment.setAttribute('type', 'password')
 	}	
 }
 
+function onNetworkUpdate() {
+	console.log("network updated")
+	window.network = event.target.options[event.target.selectedIndex].value
+	window.provider = ethers.getDefaultProvider(window.network)
+	onWalletUpdate(window.wallet)
+}
+
+function onWalletUpdate(wallet) {
+	console.log("wallet updated")
+	showWalletInfo(wallet)
+}
+
 window.onload = function () {
- 	window.web3js = new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/8c4f04c9ed3f4b9c87cfa2e4cea056ba"))
-	const web3version = window.web3js.version.api
- 	console.log("web3.js version: " + web3version) 
 	recoverWallet()
 }
 
